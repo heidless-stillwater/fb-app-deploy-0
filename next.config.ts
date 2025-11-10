@@ -37,6 +37,9 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
     NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
     NEXT_PUBLIC_FIREBASE_APP_ID: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  },
+  experimental: {
+    allowedDevOrigins: ["https://6000-firebase-studio-1762774039304.cluster-cbeiita7rbe7iuwhvjs5zww2i4.cloudworkstations.dev"]
   }
 };
 
