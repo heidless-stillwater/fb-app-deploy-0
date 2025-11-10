@@ -15,10 +15,12 @@ service cloud.firestore {
 
     // Rules for the 'files' collection
     match /files/{fileId} {
-      // Any authenticated user can read the list of files
-      allow list: if request.auth != null;
-      // Allow read, create, and delete only for the user who owns the file
-      allow read, create, delete: if request.auth.uid == request.resource.data.userId;
+      // Any authenticated user can see that files exist
+      allow list, get: if request.auth != null;
+      // Allow create for any authenticated user, as long as they set the correct userId
+      allow create: if request.auth.uid == request.resource.data.userId;
+      // Allow read, update, and delete only for the user who owns the file
+      allow read, update, delete: if request.auth.uid == resource.data.userId;
     }
   }
 }
