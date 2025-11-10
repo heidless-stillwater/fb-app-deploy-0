@@ -1,9 +1,10 @@
 'use client';
 
-import { createContext, useContext, useMemo, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import type { FirebaseApp } from 'firebase/app';
 import type { Auth } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
+import type { FirebaseStorage } from 'firebase/storage';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 import { initializeFirebase } from '.';
 
@@ -11,12 +12,14 @@ interface FirebaseContextValue {
   app: FirebaseApp | null;
   auth: Auth | null;
   firestore: Firestore | null;
+  storage: FirebaseStorage | null;
 }
 
 const FirebaseContext = createContext<FirebaseContextValue>({
   app: null,
   auth: null,
   firestore: null,
+  storage: null,
 });
 
 export function FirebaseProvider({
@@ -29,7 +32,7 @@ export function FirebaseProvider({
   useEffect(() => {
     // Initialize Firebase on the client-side
     const fb = initializeFirebase();
-    setFirebase({ app: fb.app, auth: fb.auth, firestore: fb.firestore });
+    setFirebase({ app: fb.app, auth: fb.auth, firestore: fb.firestore, storage: fb.storage });
   }, []);
 
   // Render a loading state or null until Firebase is initialized

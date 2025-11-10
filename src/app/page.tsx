@@ -20,9 +20,13 @@ import {
   File as FileIconDefault,
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
+import { collection, addDoc, deleteDoc, doc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
+import { signInAnonymously } from 'firebase/auth';
 
+import { useFirestore, useStorage, useAuth, useCollection, useUser, useMemoFirebase } from '@/firebase';
 import { getSuggestedCategories } from '@/app/actions';
-import { initialFiles, AVAILABLE_TAGS } from '@/lib/data';
+import { AVAILABLE_TAGS } from '@/lib/data';
 import type { ManagedFile } from '@/lib/types';
 import { FileIcon } from '@/components/file-icon';
 import { Button } from '@/components/ui/button';
@@ -61,6 +65,8 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 function formatBytes(bytes: number, decimals = 2): string {
   if (bytes === 0) return '0 Bytes';
@@ -72,7 +78,14 @@ function formatBytes(bytes: number, decimals = 2): string {
 }
 
 export default function Home() {
-  const [files, setFiles] = useState<ManagedFile[]>(initialFiles);
+  const firestore = useFirestore();
+  const storage = useStorage();
+  const auth = useAuth();
+  const { user, loading: userLoading } = useUser();
+
+  const filesCollection = useMemoFirebase(() => firestore ? collection(firestore, 'files') : null, [firestore]);
+  const { data: files, loading: filesLoading } = useCollection<ManagedFile>(filesCollection, { idField: 'id' });
+
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [suggestedCategories, setSuggestedCategories] = useState<string[]>([]);
@@ -85,7 +98,14 @@ export default function Home() {
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
+  useEffect(() => {
+    if (!user && !userLoading) {
+      signInAnonymously(auth);
+    }
+  }, [user, userLoading, auth]);
+
   const filteredFiles = useMemo(() => {
+    if (!files) return [];
     let filtered = files;
 
     if (activeTag) {
@@ -97,8 +117,12 @@ export default function Home() {
         file.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
-
-    return filtered.sort((a, b) => b.uploadedAt.getTime() - a.uploadedAt.getTime());
+    
+    return filtered.sort((a, b) => {
+        const dateA = a.uploadedAt instanceof Timestamp ? a.uploadedAt.toDate() : a.uploadedAt;
+        const dateB = b.uploadedAt instanceof Timestamp ? b.uploadedAt.toDate() : b.uploadedAt;
+        return dateB.getTime() - dateA.getTime();
+    });
   }, [files, searchQuery, activeTag]);
 
   const fetchSuggestions = useCallback(async (query: string) => {
@@ -137,80 +161,138 @@ export default function Home() {
   };
 
   const handleUploadClick = () => {
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Authentication Required",
+        description: "You must be signed in to upload files.",
+      });
+      return;
+    }
     fileInputRef.current?.click();
   };
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !user) return;
 
     setIsUploading(true);
     setUploadProgress(0);
 
-    const newFile: ManagedFile = {
-      id: (Math.random() * 1000).toString(),
-      name: file.name,
-      size: file.size,
-      type: (AVAILABLE_TAGS.find(tag => file.type.startsWith(tag)) || 'other'),
-      uploadedAt: new Date(),
-    };
+    const storagePath = `files/${user.uid}/${Date.now()}-${file.name}`;
+    const storageRef = ref(storage, storagePath);
+    const uploadTask = uploadBytesResumable(storageRef, file);
 
-    // Simulate upload progress
-    const interval = setInterval(() => {
-      setUploadProgress(prev => {
-        if (prev >= 95) {
-          clearInterval(interval);
-          return 100;
-        }
-        return prev + 10;
-      });
-    }, 200);
-
-    setTimeout(() => {
-      clearInterval(interval);
-      setUploadProgress(100);
-      setTimeout(() => {
-        setFiles(prev => [newFile, ...prev]);
+    uploadTask.on('state_changed',
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        setUploadProgress(progress);
+      },
+      (error) => {
+        console.error("Upload failed:", error);
         setIsUploading(false);
         toast({
-          title: "File Uploaded",
-          description: `"${file.name}" has been successfully added.`,
+          variant: "destructive",
+          title: "Upload Failed",
+          description: "Could not upload the file. Please try again.",
         });
-      }, 500);
-    }, 2500);
+      },
+      () => {
+        getDownloadURL(uploadTask.snapshot.ref).then(async (downloadURL) => {
+          const fileData = {
+            name: file.name,
+            size: file.size,
+            type: (AVAILABLE_TAGS.find(tag => file.type.startsWith(tag)) || 'other'),
+            uploadedAt: serverTimestamp(),
+            storagePath: storagePath,
+            userId: user.uid,
+          };
+
+          addDoc(collection(firestore, 'files'), fileData)
+            .then(() => {
+              setIsUploading(false);
+              toast({
+                title: "File Uploaded",
+                description: `"${file.name}" has been successfully added.`,
+              });
+            })
+            .catch(async (serverError) => {
+               const permissionError = new FirestorePermissionError({
+                  path: `files`,
+                  operation: 'create',
+                  requestResourceData: fileData
+               });
+               errorEmitter.emit('permission-error', permissionError);
+            });
+        });
+      }
+    );
   };
   
-  const handleDownload = (file: ManagedFile) => {
-    const blob = new Blob([`This is a dummy file representing ${file.name}`], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = file.name;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast({
-      title: "Download Started",
-      description: `Downloading "${file.name}".`,
-    });
+  const handleDownload = async (file: ManagedFile) => {
+    try {
+      const url = await getDownloadURL(ref(storage, file.storagePath));
+      const a = document.createElement('a');
+      a.href = url;
+      // This will open the file in a new tab, from where the user can download it.
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      toast({
+        title: "Opening File",
+        description: `Your file "${file.name}" is opening in a new tab.`,
+      });
+    } catch (error) {
+      console.error("Download failed:", error);
+      toast({
+        variant: "destructive",
+        title: "Download Failed",
+        description: "Could not get the download URL.",
+      });
+    }
   };
 
   const handleDelete = (file: ManagedFile) => {
     setFileToDelete(file);
   };
   
-  const confirmDelete = () => {
-    if (fileToDelete) {
-      setFiles(files.filter(f => f.id !== fileToDelete.id));
-      toast({
-        title: "File Deleted",
-        description: `"${fileToDelete.name}" has been removed.`,
-        variant: "destructive"
-      });
-      setFileToDelete(null);
+  const confirmDelete = async () => {
+    if (fileToDelete && firestore) {
+      const fileRef = doc(firestore, 'files', fileToDelete.id);
+      const storageRef = ref(storage, fileToDelete.storagePath);
+      
+      try {
+        await deleteObject(storageRef);
+        await deleteDoc(fileRef);
+        
+        toast({
+          title: "File Deleted",
+          description: `"${fileToDelete.name}" has been removed.`,
+        });
+      } catch (error: any) {
+         if (error.code && error.code.includes('permission-denied')){
+             const permissionError = new FirestorePermissionError({
+                  path: fileRef.path,
+                  operation: 'delete',
+               });
+             errorEmitter.emit('permission-error', permissionError);
+         } else {
+            toast({
+              variant: "destructive",
+              title: "Error Deleting File",
+              description: "An unexpected error occurred.",
+            });
+         }
+      } finally {
+        setFileToDelete(null);
+      }
     }
   };
+
+  if (userLoading) {
+    return <div className="flex items-center justify-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground w-full">
@@ -237,15 +319,16 @@ export default function Home() {
                     onChange={handleSearchChange}
                   />
                 </div>
-                <Button onClick={handleUploadClick}>
-                  <UploadCloud className="mr-2 h-4 w-4" />
-                  Upload
+                <Button onClick={handleUploadClick} disabled={isUploading}>
+                  {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
+                  {isUploading ? 'Uploading...' : 'Upload'}
                 </Button>
                 <input
                   type="file"
                   ref={fileInputRef}
                   onChange={handleFileChange}
                   className="hidden"
+                  disabled={isUploading}
                 />
               </div>
             </div>
@@ -285,7 +368,13 @@ export default function Home() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredFiles.length > 0 ? (
+                  {filesLoading ? (
+                     <TableRow>
+                        <TableCell colSpan={6} className="h-24 text-center">
+                           <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
+                        </TableCell>
+                     </TableRow>
+                  ) : filteredFiles.length > 0 ? (
                     filteredFiles.map(file => (
                       <TableRow key={file.id}>
                         <TableCell className="hidden sm:table-cell">
@@ -297,7 +386,7 @@ export default function Home() {
                            <Badge variant="outline">{file.type.charAt(0).toUpperCase() + file.type.slice(1)}</Badge>
                         </TableCell>
                         <TableCell className="text-muted-foreground">
-                           {formatDistanceToNow(file.uploadedAt, { addSuffix: true })}
+                           {file.uploadedAt && formatDistanceToNow(file.uploadedAt instanceof Timestamp ? file.uploadedAt.toDate() : file.uploadedAt, { addSuffix: true })}
                         </TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
