@@ -36,6 +36,7 @@ import { db, storage } from "@/lib/firebase/config";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { NanoGallery } from "@/components/nano-gallery";
+import type { NanoRecord } from "@/lib/types";
 
 const styleOptions = [
     'gothic',
@@ -57,10 +58,14 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-function NanoProcessor() {
+function NanoProcessor({ 
+    setOriginalImage, 
+    setTransformedImage 
+}: { 
+    setOriginalImage: (url: string | null) => void,
+    setTransformedImage: (url: string | null) => void,
+}) {
   const [isLoading, setIsLoading] = useState(false);
-  const [originalImagePreview, setOriginalImagePreview] = useState<string | null>(null);
-  const [transformedImage, setTransformedImage] = useState<string | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
   const originalImageRef = useRef<HTMLImageElement>(null);
@@ -172,7 +177,7 @@ function NanoProcessor() {
 
     try {
       const imageAsDataUri = await fileToDataUri(values.image);
-      setOriginalImagePreview(imageAsDataUri);
+      setOriginalImage(imageAsDataUri);
 
       const originalImageUrl = await uploadToStorage(values.image, values.image.name, 'original');
 
@@ -226,7 +231,6 @@ function NanoProcessor() {
   }
 
   return (
-    <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8">
       <Card>
         <CardHeader>
           <div className="flex items-center gap-4">
@@ -258,7 +262,7 @@ function NanoProcessor() {
                               onChange(file); // This updates the form state
                               const reader = new FileReader();
                               reader.onload = (event) => {
-                                setOriginalImagePreview(event.target?.result as string);
+                                setOriginalImage(event.target?.result as string);
                                 setTransformedImage(null);
                               };
                               reader.readAsDataURL(file);
@@ -346,64 +350,112 @@ function NanoProcessor() {
           </Form>
         </CardContent>
       </Card>
-      
-      <Card className="flex flex-col">
-         <CardHeader>
-           <CardTitle>Result</CardTitle>
-           <CardDescription>Your original and transformed images.</CardDescription>
-         </CardHeader>
-         <CardContent className="flex-grow grid grid-cols-1 grid-rows-2 gap-4">
-            <div className="relative border rounded-lg overflow-hidden bg-muted/20">
-              {originalImagePreview ? (
-                 <Image src={originalImagePreview} alt="Original" layout="fill" objectFit="contain" ref={originalImageRef}/>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                  <ImageIcon className="h-10 w-10 mb-2" />
-                  <p>Original Image</p>
-                </div>
-              )}
-            </div>
-            <div className="relative border rounded-lg overflow-hidden bg-muted/20">
-               {isLoading && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
-                      <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                  </div>
-              )}
-              {transformedImage ? (
-                <Image src={transformedImage} alt="Transformed" layout="fill" objectFit="contain" />
-              ) : (
-                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                  <ImageIcon className="h-10 w-10 mb-2" />
-                  <p>Transformed Image</p>
-                </div>
-              )}
-            </div>
-         </CardContent>
-          {transformedImage && (
-            <CardFooter>
-               <Button asChild className="w-full">
-                <a href={transformedImage} download="transformed-image.png">
-                  <Download className="mr-2 h-4 w-4" />
-                  Download Transformed Image
-                </a>
-              </Button>
-            </CardFooter>
-          )}
-      </Card>
-    </div>
   );
 }
 
+function ResultsDisplay({ 
+    originalImage, 
+    transformedImage 
+}: { 
+    originalImage: string | null, 
+    transformedImage: string | null 
+}) {
+    const originalImageRef = useRef<HTMLImageElement>(null);
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleDownload = async () => {
+        if (!transformedImage) return;
+
+        try {
+            const response = await fetch(transformedImage);
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.style.display = "none";
+            a.href = url;
+            a.download = "transformed-image.png";
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+        } catch (error) {
+            console.error("Download error:", error);
+        }
+    };
+    
+    return (
+        <Card className="flex flex-col">
+            <CardHeader>
+                <CardTitle>Result</CardTitle>
+                <CardDescription>Your original and transformed images.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-grow grid grid-cols-1 grid-rows-2 gap-4">
+                <div className="relative border rounded-lg overflow-hidden bg-muted/20">
+                {originalImage ? (
+                    <Image src={originalImage} alt="Original" layout="fill" objectFit="contain" ref={originalImageRef}/>
+                ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                    <ImageIcon className="h-10 w-10 mb-2" />
+                    <p>Original Image</p>
+                    </div>
+                )}
+                </div>
+                <div className="relative border rounded-lg overflow-hidden bg-muted/20">
+                {isLoading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
+                        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                    </div>
+                )}
+                {transformedImage ? (
+                    <Image src={transformedImage} alt="Transformed" layout="fill" objectFit="contain" />
+                ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                    <ImageIcon className="h-10 w-10 mb-2" />
+                    <p>Transformed Image</p>
+                    </div>
+                )}
+                </div>
+            </CardContent>
+            {transformedImage && (
+                <CardFooter>
+                    <Button onClick={handleDownload} className="w-full">
+                        <Download className="mr-2 h-4 w-4" />
+                        Download Transformed Image
+                    </Button>
+                </CardFooter>
+            )}
+        </Card>
+    );
+}
+
 export default function NanoAndDisplayPage() {
+    const [originalImage, setOriginalImage] = useState<string | null>(null);
+    const [transformedImage, setTransformedImage] = useState<string | null>(null);
+
+    const handleRecordSelect = (record: NanoRecord | null) => {
+        if (record) {
+            setOriginalImage(record.originalImageUrl);
+            setTransformedImage(record.transformedImageUrl);
+        } else {
+            setOriginalImage(null);
+            setTransformedImage(null);
+        }
+    }
+
   return (
-    <div className="flex flex-col min-h-screen items-center justify-center bg-background px-4 py-8 gap-8">
+    <div className="flex flex-col min-h-screen items-start justify-center bg-background px-4 py-8 gap-8">
       <div className="absolute top-4 left-4">
         <Button asChild variant="ghost">
           <Link href="/">&larr; Back to Home</Link>
         </Button>
       </div>
-      <NanoProcessor />
-      <NanoGallery />
+      <div className="w-full max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
+        <NanoProcessor setOriginalImage={setOriginalImage} setTransformedImage={setTransformedImage} />
+        <ResultsDisplay originalImage={originalImage} transformedImage={transformedImage} />
+      </div>
+      <div className="w-full max-w-7xl mx-auto">
+        <NanoGallery onRecordSelect={handleRecordSelect} />
+      </div>
     </div>
   );
 }
