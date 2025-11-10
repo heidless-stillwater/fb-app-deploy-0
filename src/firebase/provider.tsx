@@ -1,11 +1,10 @@
 'use client';
 
-import { createContext, useContext, useMemo } from 'react';
+import { createContext, useContext, useMemo, useState, useEffect } from 'react';
 import type { FirebaseApp } from 'firebase/app';
 import type { Auth } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
-import { FirebaseClientProvider } from './client-provider';
 import { initializeFirebase } from '.';
 
 interface FirebaseContextValue {
@@ -22,29 +21,24 @@ const FirebaseContext = createContext<FirebaseContextValue>({
 
 export function FirebaseProvider({
   children,
-  app,
-  auth,
-  firestore,
 }: {
   children: React.ReactNode;
-  app?: FirebaseApp;
-  auth?: Auth;
-  firestore?: Firestore;
 }) {
-  const contextValue = useMemo(() => {
-    if (app && auth && firestore) {
-      return { app, auth, firestore };
-    }
-    const fb = initializeFirebase();
-    return { app: fb.app, auth: fb.auth, firestore: fb.firestore };
-  }, [app, auth, firestore]);
+  const [firebase, setFirebase] = useState<FirebaseContextValue | null>(null);
 
-  if (!contextValue.app) {
-     return <FirebaseClientProvider>{children}</FirebaseClientProvider>;
+  useEffect(() => {
+    // Initialize Firebase on the client-side
+    const fb = initializeFirebase();
+    setFirebase({ app: fb.app, auth: fb.auth, firestore: fb.firestore });
+  }, []);
+
+  // Render a loading state or null until Firebase is initialized
+  if (!firebase) {
+    return null; 
   }
-  
+
   return (
-    <FirebaseContext.Provider value={contextValue}>
+    <FirebaseContext.Provider value={firebase}>
       {children}
       <FirebaseErrorListener />
     </FirebaseContext.Provider>
