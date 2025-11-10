@@ -119,6 +119,7 @@ export default function Home() {
     }
     
     return filtered.sort((a, b) => {
+        if (!a.uploadedAt || !b.uploadedAt) return 0;
         const dateA = a.uploadedAt instanceof Timestamp ? a.uploadedAt.toDate() : a.uploadedAt;
         const dateB = b.uploadedAt instanceof Timestamp ? b.uploadedAt.toDate() : b.uploadedAt;
         return dateB.getTime() - dateA.getTime();
@@ -453,3 +454,5 @@ export default function Home() {
 }
 
 const buttonVariants = cn;
+
+    
