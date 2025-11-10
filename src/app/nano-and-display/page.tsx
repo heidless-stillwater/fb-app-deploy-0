@@ -362,19 +362,34 @@ function ResultsDisplay({
 }) {
     const originalImageRef = useRef<HTMLImageElement>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const { toast } = useToast();
 
-    const handleDownload = () => {
+    const handleDownload = async () => {
         if (!transformedImage) return;
+
         try {
+            toast({
+                title: "Download Started",
+                description: "Your transformed image is preparing to download.",
+            });
+            const response = await fetch(transformedImage);
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.style.display = "none";
-            a.href = transformedImage;
+            a.href = url;
             a.download = "transformed-image.png";
             document.body.appendChild(a);
             a.click();
+            window.URL.revokeObjectURL(url);
             a.remove();
         } catch (error) {
             console.error("Download error:", error);
+            toast({
+                variant: "destructive",
+                title: "Download Failed",
+                description: "Could not download the transformed image.",
+            });
         }
     };
     
