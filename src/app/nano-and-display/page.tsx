@@ -366,23 +366,23 @@ function ResultsDisplay({
 
     const handleDownload = async () => {
         if (!transformedImage) return;
-
+    
         try {
             toast({
                 title: "Download Started",
                 description: "Your transformed image is preparing to download.",
             });
-            const response = await fetch(transformedImage);
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
+    
+            // Directly create a link with the data URI
             const a = document.createElement("a");
             a.style.display = "none";
-            a.href = url;
-            a.download = "transformed-image.png";
+            a.href = transformedImage;
+            a.download = "transformed-image.png"; 
+            
             document.body.appendChild(a);
             a.click();
-            window.URL.revokeObjectURL(url);
-            a.remove();
+            document.body.removeChild(a);
+    
         } catch (error) {
             console.error("Download error:", error);
             toast({
@@ -469,5 +469,7 @@ export default function NanoAndDisplayPage() {
     </div>
   );
 }
+
+    
 
     
