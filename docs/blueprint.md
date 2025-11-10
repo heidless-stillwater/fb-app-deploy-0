@@ -1,19 +1,19 @@
-# **App Name**: FileWise
+# **App Name**: fb-test-app-0
 
 ## Core Features:
 
-- File Upload: Allow users to upload files to their personal storage space.
-- File Download: Enable users to download files from their storage.
-- File Listing: Display a comprehensive list of all files in the user's storage.
-- File Deletion: Provide functionality for users to delete files from their storage.
-- AI-Powered Search: Implement a search feature that utilizes AI to understand search queries and suggest file categorization to the user as a tool. Based on what is known about files on disk it may produce file tags to narrow the search results. 
+- File Upload: Intuitive drag-and-drop or select-from-folder functionality for uploading files.
+- File Download: Easy download of stored files with a single click.
+- File Listing: Display all stored files in a clear, sortable list.
+- File Deletion: Simple one-click deletion of files.
+- AI-Powered Search: Search tool that suggests categorization tags for files.
 
 ## Style Guidelines:
 
-- Primary color: Deep blue (#2962FF) to convey trust and security.
-- Background color: Light grey (#F0F2F5), near-white, to provide a clean, modern look.
-- Accent color: Soft teal (#30D5C8) for interactive elements and highlights.
-- Body and headline font: 'Inter' sans-serif for a clean, modern, objective feel.
-- Use a set of simple, consistent icons throughout the app for file types and actions.
-- A clean, intuitive layout that prioritizes ease of navigation and file management.
-- Subtle animations to enhance user experience, such as file upload progress bars.
+- Primary color: Deep blue (#2962FF), conveying trust and stability.
+- Background color: Light blue (#E6F0FF), offering a clean, modern backdrop.
+- Accent color: Cyan (#00FFFF), providing visual highlights for interactive elements.
+- Headline font: 'Poppins', a geometric sans-serif for a contemporary look.
+- Body font: 'Inter', a grotesque-style sans-serif with a modern look.
+- Use clean, minimalist icons for file actions and categories.
+- A modern, spacious layout that prioritizes ease of navigation and file discoverability.

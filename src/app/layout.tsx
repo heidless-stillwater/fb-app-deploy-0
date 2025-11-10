@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
-import { FirebaseProvider } from '@/firebase';
+import { ThemeProvider } from '@/components/theme-provider';
+import { FirebaseAuthProvider } from '@/components/auth-provider';
 
 export const metadata: Metadata = {
-  title: 'FileWise',
-  description: 'A no-authentication personal file storage web app for seamless file management.',
+  title: 'File Storage',
+  description: 'An elegant solution for managing your digital assets.',
 };
 
 export default function RootLayout({
@@ -17,15 +18,19 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap"
           rel="stylesheet"
         />
       </head>
-      <body className="font-body antialiased">
-        <FirebaseProvider>{children}</FirebaseProvider>
-        <Toaster />
+      <body className="font-body antialiased bg-background">
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+          <FirebaseAuthProvider>
+            {children}
+            <Toaster />
+          </FirebaseAuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
