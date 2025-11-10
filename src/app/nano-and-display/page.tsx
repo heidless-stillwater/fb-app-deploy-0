@@ -363,20 +363,15 @@ function ResultsDisplay({
     const originalImageRef = useRef<HTMLImageElement>(null);
     const [isLoading, setIsLoading] = useState(false);
 
-    const handleDownload = async () => {
+    const handleDownload = () => {
         if (!transformedImage) return;
-
         try {
-            const response = await fetch(transformedImage);
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.style.display = "none";
-            a.href = url;
+            a.href = transformedImage;
             a.download = "transformed-image.png";
             document.body.appendChild(a);
             a.click();
-            window.URL.revokeObjectURL(url);
             a.remove();
         } catch (error) {
             console.error("Download error:", error);
@@ -459,3 +454,5 @@ export default function NanoAndDisplayPage() {
     </div>
   );
 }
+
+    
