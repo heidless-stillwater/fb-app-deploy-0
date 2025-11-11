@@ -44,13 +44,13 @@ export function useFileManager(currentFolderId: string | null = null) {
 
     const filesQuery = query(
       collection(db, "files"),
-      where("owner", "==", user.uid),
+      where("userId", "==", user.uid),
       where("folderId", "==", currentFolderId)
     );
 
     const foldersQuery = query(
         collection(db, "folders"),
-        where("owner", "==", user.uid),
+        where("userId", "==", user.uid),
         where("parentId", "==", currentFolderId)
     );
 
@@ -125,7 +125,7 @@ export function useFileManager(currentFolderId: string | null = null) {
             type: file.type,
             url: downloadURL,
             thumbnail: thumbnailUrl,
-            owner: user.uid,
+            userId: user.uid,
             uploadDate: new Date(),
             folderId: currentFolderId,
           };
@@ -186,7 +186,7 @@ export function useFileManager(currentFolderId: string | null = null) {
     try {
         const folderData: Omit<FirestoreFolderData, 'createdAt'|'id'> = {
             name,
-            owner: user.uid,
+            userId: user.uid,
             parentId: currentFolderId,
         };
         await addDoc(collection(db, 'folders'), {
@@ -207,14 +207,14 @@ export function useFileManager(currentFolderId: string | null = null) {
 
     async function recursiveDelete(folderIdToDelete: string) {
         // Delete files in the current folder
-        const filesQuery = query(collection(db, "files"), where("folderId", "==", folderIdToDelete), where("owner", "==", user!.uid));
+        const filesQuery = query(collection(db, "files"), where("folderId", "==", folderIdToDelete), where("userId", "==", user!.uid));
         const filesSnapshot = await getDocs(filesQuery);
         filesSnapshot.forEach((doc) => {
             batch.delete(doc.ref);
         });
         
         // Delete subfolders
-        const subfoldersQuery = query(collection(db, "folders"), where("parentId", "==", folderIdToDelete), where("owner", "==", user!.uid));
+        const subfoldersQuery = query(collection(db, "folders"), where("parentId", "==", folderIdToDelete), where("userId", "==", user!.uid));
         const subfoldersSnapshot = await getDocs(subfoldersQuery);
         for (const folderDoc of subfoldersSnapshot.docs) {
             await recursiveDelete(folderDoc.id);

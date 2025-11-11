@@ -8,7 +8,7 @@ export type FileData = {
   uploadDate: Date;
   thumbnail?: string;
   url: string;
-  owner: string;
+  userId: string;
   folderId: string | null;
 };
 
@@ -19,7 +19,7 @@ export type FirestoreFileData = Omit<FileData, 'uploadDate' | 'id'> & {
 export type FolderData = {
   id: string;
   name: string;
-  owner: string;
+  userId: string;
   createdAt: Date;
   parentId: string | null;
 }
