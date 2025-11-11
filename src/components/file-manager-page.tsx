@@ -16,7 +16,7 @@ import Link from "next/link";
 export function FileManagerPage() {
   const searchParams = useSearchParams();
   const folderId = searchParams.get("folderId") || null;
-  const [view, setView] = useState<View>("extra-small");
+  const [view, setView] = useState<View>("medium");
 
   const { files, folders, addFile, deleteFile, deleteFiles, createFolder, deleteFolder, loading: filesLoading, uploading, uploadProgress } = useFileManager(folderId);
   const { user, loading: authLoading } = useAuth();
