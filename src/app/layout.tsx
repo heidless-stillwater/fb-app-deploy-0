@@ -1,8 +1,10 @@
+
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider } from '@/components/theme-provider';
 import { FirebaseAuthProvider } from '@/components/auth-provider';
+import { Footer } from '@/components/footer';
 
 export const metadata: Metadata = {
   title: 'File Storage',
@@ -24,10 +26,11 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="font-body antialiased bg-background">
+      <body className="font-body antialiased bg-background flex flex-col min-h-screen">
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
           <FirebaseAuthProvider>
-            {children}
+            <main className="flex-grow">{children}</main>
+            <Footer />
             <Toaster />
           </FirebaseAuthProvider>
         </ThemeProvider>

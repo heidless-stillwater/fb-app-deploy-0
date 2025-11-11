@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -69,7 +70,7 @@ export default function PricingPage() {
         </div>
       </header>
       
-      <main className="flex-grow container mx-auto max-w-5xl px-4 py-8">
+      <div className="flex-grow container mx-auto max-w-5xl px-4 py-8">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
           {tiers.map((tier) => (
             <Card key={tier.name} className={`flex flex-col ${tier.isPrimary ? 'border-primary ring-2 ring-primary shadow-2xl' : 'shadow-sm'}`}>
@@ -99,11 +100,7 @@ export default function PricingPage() {
             </Card>
           ))}
         </div>
-      </main>
-
-      <footer className="container mx-auto max-w-5xl px-4 py-6 text-center text-sm text-muted-foreground">
-        <p>&copy; {new Date().getFullYear()} File Storage. All rights reserved.</p>
-      </footer>
+      </div>
     </div>
   );
 }
